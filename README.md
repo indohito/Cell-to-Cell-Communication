@@ -389,6 +389,4 @@ python analyze_all_iterations.py
 - **h5py**: Reading .h5ad files
 
 Install all:
-```bash
 pip install -r requirements.txt
-```
