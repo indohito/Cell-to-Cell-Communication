@@ -1,8 +1,6 @@
 
 # Combined Dataset - Initial Analysis Guide
 
-**Purpose**: Consolidated dataset for team exploration and analysis
-
 ## Files Included
 
 ### 1. **combined_dataset.h5ad** (Main file)
@@ -157,10 +155,34 @@ adata_filtered = adata[:, adata.var['uniprot'].isin(overlap)]
 print(f"Filtered dataset shape: {adata_filtered.shape}")
 ```
 
+### 4. Exploratory Data Analysis (EDA)**
+```python
+import scanpy as sc
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+
+adata = sc.read_h5ad('results/combined_dataset.h5ad')
+counts = adata.obs['cell_type'].value_counts().sort_values(ascending=True)
+os.makedirs('results/figures', exist_ok=True)
+
+# Save file (optional)
+counts.to_csv('results/cell_type_counts.csv', header=['count'])
+
+# Draw a bar chart (horizontal)
+plt.figure(figsize=(8, max(4, len(counts) * 0.25)))
+counts.plot(kind='barh', color='C0')
+plt.xlabel('Cell count')
+plt.title('Cell counts per cell_type')
+plt.tight_layout()
+plt.savefig('results/figures/cell_type_counts.png', dpi=150)
+print('Wrote results/cell_type_counts.csv and results/figures/cell_type_counts.png')
+```
+
 ## Next Steps
 
 1. **Exploratory Data Analysis (EDA)**
-   - Distribution of cell types
+   - Distribution of cell types （completed）
    - Gene expression patterns per cell type
    - PCA/UMAP visualization
 
@@ -170,7 +192,7 @@ print(f"Filtered dataset shape: {adata_filtered.shape}")
    - Weight edges by expression levels
 
 3. **Train Predictive Models**
-   - Use datasets in the training scripts
+   - Use datasets in training scripts
    - Compare different interaction definitions
    - Validate predictions against CCC benchmarks
 
