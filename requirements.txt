@@ -1,0 +1,17 @@
+# - The project includes a working virtualenv in `./cpdb/` with the packages used to run
+#   the scripts. For reproducibility, prefer using that environment: `./cpdb/bin/python3`.
+
+pandas
+numpy
+scipy
+scikit-learn
+h5py
+anndata
+matplotlib
+seaborn
+networkx
+tqdm
+plotly
+
+torch
+torch-geometric

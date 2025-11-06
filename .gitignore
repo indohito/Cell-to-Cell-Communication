@@ -1,0 +1,75 @@
+# Environment & IDE
+cpdb/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Analysis & Results (Temporary)
+results/embeddings/
+results/iter*.csv        # Exclude training history
+results/data_summary_statistics.csv
+# But include analysis CSVs: interaction_summary.csv, protein_summary.csv, dataset_metadata.json
+*.log
+
+# Large Data Files (too large for git)
+BindingDB_All.tsv              # 6.2 GB - store separately or use Git LFS
+# dataset.h5ad  - included in repository (team data)
+# graph.pt - included in repository (preprocessed graph)
+
+# Keep in repo:
+# - results/models/*.pt (trained model weights)
+# - results/figures/*.png (analysis plots)
+# - results/graph.pt (preprocessed graph)
+# - cellphonedb_data/ (reference data)
+# - scripts/ (all utility scripts)
+# - *.py (all training/analysis code)
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test/Temporary directories
+temp/
+tmp/
+test_output/
+debug/
+
+# IDE specific
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Exclude large external files (use git-lfs or separate storage)
+*.bak
+*.tar.gz
+*.zip
