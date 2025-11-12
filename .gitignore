@@ -35,18 +35,38 @@ wheels/
 
 # Analysis & Results (Temporary)
 results/embeddings/
-results/iter*.csv        # Exclude training history
+results/iter1_history.csv      # Exclude intermediate iterations
+results/iter2_history.csv
+results/iter1_metrics.csv
+results/iter2_metrics.csv
 results/data_summary_statistics.csv
-# But include analysis CSVs: interaction_summary.csv, protein_summary.csv, dataset_metadata.json
+results/dataset_metadata.json
+results/interaction_summary.csv
+results/protein_summary.csv
 *.log
 
-# Large Data Files (too large for git)
-BindingDB_All.tsv              # 6.2 GB - store separately or use Git LFS
-# dataset.h5ad  - included in repository (team data)
-# graph.pt - included in repository (preprocessed graph)
+# Large Data Files (too large for git without LFS)
+# REMOVED from repo: BindingDB_All.tsv (6.2 GB), cpdb/ venv (1.1 GB)
+# These are either integrated into results/ or reproducible via requirements.txt
 
-# Keep in repo:
-# - results/models/*.pt (trained model weights)
+# Exclude redundant/large files (keep only essentials):
+results/edge_list.csv          # Redundant (for training, not needed in repo)
+results/celltype_pair_weights.csv  # Redundant computation
+results/course\ project\ example.pdf  # Example PDF, not needed
+results/graph_with_random_features.pt  # Experimental, not needed
+results/figures/iter*.png      # Keep only iteration 4 final figures
+results/models/model_iter*.pt  # Keep only final models
+results/integration_table.csv  # Old unweighted version
+results/combined_dataset.h5ad  # Duplicate of dataset.h5ad, exclude from repo
+
+# ALLOWING in repo (essential for submission):
+# - results/graph.pt (preprocessed graph, needed for training)
+# - results/integration_table_weighted.csv (affinity-integrated data)
+# - dataset.h5ad (primary dataset)
+
+# DO NOT EXCLUDE (keeping in repo):
+# - results/models/*.pt (trained weights, small, needed for inference)
+# - requirements.txt (pip install automatically creates venv)
 # - results/figures/*.png (analysis plots)
 # - results/graph.pt (preprocessed graph)
 # - cellphonedb_data/ (reference data)
