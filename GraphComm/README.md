@@ -1,3 +1,42 @@
+# Notes for model adjustment in final project:
+
+Need to download original datasets from [code ocean](https://codeocean.com/capsule/8269062/tree/v6) and add downloaded files into `data/` under `GraphComm/` if want to try the sample scripts. This is only true if not using the code ocean/docker version. 
+
+## example workflow
+
+example workflow examined running the model for Drosophila. 
+
+make sure to create new environment for `python 3.9` and run `GraphComm/install_packages.sh` to install required packages
+
+- Preprocess
+    - generate pathways using `OmnipathR`
+        - this is an R package for the omnipath web interface
+        - kegg_pw_annot <- kegg_pathway_annotations() #generates df
+        - this makes the `kegg_pathways.csv` 
+            - no sample code
+    - run `generate_omnipath.ipynb`
+        - inputs needed:
+            - `"../../data/LR_database/kegg_pathways.csv"`
+                - we should be able to directly use this
+        - outputs used for next step
+            - `"../../data/LR_database/intercell_nodes.csv"`
+            - `"../../data/LR_database/intercell_interactions.csv"`
+                - again these should be readily usable
+    - run `make_graphs.ipynb` to generate input files
+        - inputs needed:
+            - RNA expression data: can use either `csv` or `h5ad`
+                - `csv` matrix for Drosophila "../../data/raw_data/Drosophila/matrix.csv": RNA expression matrix ?
+                    ![preview of matrix](data/raw_data/Drosophila/matrix_data_preview.png)
+                - not edited currently: `h5ad` example for Cardiac_cells `"../../data/raw_data/Cardiac_cells/Visium-RZ_FZ_P5.h5ad"`
+            - LR nodes: `"../../data/LR_database/intercell_nodes.csv"`
+            - Omnipath Network: `"../../data/LR_database/intercell_interactions.csv"`
+        - outputs used for next step:
+            - all needed components outputed to: `../../data/GraphComm_Input/intercell_Drosophila/`
+        - changes to the script: modified dir structure
+
+- Predictions
+    - `python train.py --dateframe=="intercell_Drosophila"`
+
 # GraphComm: A Graph-based Deep Learning Method to Predict Cell-Cell Communication in single-cell RNAseq data
 
 Emily So<sup>1,2,5</sup>, Sikander Hayat<sup>3</sup>, Sisira Kadambat Nair<sup>1</sup>, Bo Wang<sup>4,5,6,7,\$</sup>,Benjamin Haibe-Kains<sup>1,2,4,6,8,9,\$</sup>
