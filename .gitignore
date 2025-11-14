@@ -63,6 +63,7 @@ tmp/
 test_output/
 debug/
 local_data/
+GraphComm/data/
 
 # IDE specific
 .vscode/

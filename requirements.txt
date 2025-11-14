@@ -15,3 +15,18 @@ plotly
 
 torch
 torch-geometric
+
+
+warnings
+liana
+scanpy
+os 
+argparse
+random
+omnipath
+scprep
+rdflib
+leidenalg
+torch-cluster
+torch-scatter
+torch-sparse

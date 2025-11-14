@@ -1,0 +1,31 @@
+name: bioinf-593  # Replace myenv with your environment name
+channels:
+  - defaults  # Optional: Specify channels for package sources
+dependencies:
+  - python=3.13.9
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - h5py
+  - anndata
+  - matplotlib
+  - seaborn
+  - networkx
+  - tqdm
+  - plotly
+  - torch
+  - torch-geometric
+  - warnings
+  - liana
+  - scanpy
+  - os 
+  - argparse
+  - random
+  - omnipath
+  - scprep
+  - rdflib
+  - leidenalg
+  - torch-cluster
+  - torch-scatter
+  - torch-sparse
