@@ -33,22 +33,24 @@ os.makedirs(FIGDIR, exist_ok=True)
 
 def plot_training_curves(history_csv: str):
     df = pd.read_csv(history_csv)
-    # Expect columns: epoch,train_loss,pr_auc,roc_auc,f1,recall,precision,model
-    # Convert epoch to int if needed
     if 'epoch' in df.columns:
         df['epoch'] = df['epoch'].astype(int)
 
-    # Plot train_loss and pr_auc per epoch for each model
     models = df['model'].unique()
 
     plt.figure(figsize=(10, 4))
     for model in models:
         mdf = df[df['model'] == model].sort_values('epoch')
-        plt.plot(mdf['epoch'], mdf['train_loss'], label=f"{model} loss")
+        if 'loss' in mdf.columns:
+            plt.plot(mdf['epoch'], mdf['loss'], label=f"{model} loss", marker='o')
     plt.xlabel('Epoch')
-    plt.ylabel('Train Loss')
+    plt.ylabel('Loss')
     plt.title('Training Loss per Epoch')
     plt.legend()
+    try:
+        plt.xlim(1, 14)
+    except Exception:
+        pass
     out1 = os.path.join(FIGDIR, 'training_loss.png')
     plt.tight_layout()
     plt.savefig(out1, dpi=150)
@@ -57,14 +59,24 @@ def plot_training_curves(history_csv: str):
     plt.figure(figsize=(10, 4))
     for model in models:
         mdf = df[df['model'] == model].sort_values('epoch')
-        if 'pr_auc' in mdf.columns:
-            plt.plot(mdf['epoch'], mdf['pr_auc'], label=f"{model} PR-AUC")
+        if 'roc_auc' in mdf.columns:
+            plt.plot(mdf['epoch'], mdf['roc_auc'], label=f"{model} ROC-AUC", marker='s')
     plt.xlabel('Epoch')
-    plt.ylabel('PR-AUC')
-    plt.ylim(0, 1)
-    plt.title('Validation PR-AUC per Epoch')
+    plt.ylabel('ROC-AUC')
+    try:
+        all_roc = df['roc_auc'].dropna().values
+        rmin, rmax = float(all_roc.min()), float(all_roc.max())
+        rpad = max(0.01, (rmax - rmin) * 0.15)
+        plt.ylim(max(0.0, rmin - rpad), min(1.0, rmax + rpad))
+    except Exception:
+        plt.ylim(0.94, 1.0)
+    try:
+        plt.xlim(1, 14)
+    except Exception:
+        pass
+    plt.title('Validation ROC-AUC per Epoch')
     plt.legend()
-    out2 = os.path.join(FIGDIR, 'training_pr_auc.png')
+    out2 = os.path.join(FIGDIR, 'training_roc_auc.png')
     plt.tight_layout()
     plt.savefig(out2, dpi=150)
     plt.close()
@@ -74,29 +86,34 @@ def plot_training_curves(history_csv: str):
 
 def plot_metrics_comparison(metrics_csv: str, benchmarks_csv: str = None):
     metrics = pd.read_csv(metrics_csv)
-    # metrics expected: model,pr_auc,roc_auc,f1,recall,precision
     metrics = metrics.set_index('model')
 
-    # Reformat for plotting: melt
     m = metrics.reset_index().melt(id_vars='model', var_name='metric', value_name='value')
 
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(10, 5))
     if sns is not None:
-        sns.barplot(data=m, x='metric', y='value', hue='model')
+        sns.barplot(data=m, x='metric', y='value', hue='model', palette='Set2')
     else:
-        # fallback to matplotlib grouped bars
-        metrics_list = m['metric'].unique().tolist()
-        models = m['model'].unique().tolist()
+        metrics_list = sorted(m['metric'].unique().tolist())
+        models = sorted(m['model'].unique().tolist())
         n_metrics = len(metrics_list)
         x = range(n_metrics)
         width = 0.35
         for i, model in enumerate(models):
-            vals = [m[(m['metric'] == mm) & (m['model'] == model)]['value'].values[0] for mm in metrics_list]
+            vals = [m[(m['metric'] == mm) & (m['model'] == model)]['value'].values[0] if len(m[(m['metric'] == mm) & (m['model'] == model)]) > 0 else 0 for mm in metrics_list]
             plt.bar([xi + i * width for xi in x], vals, width=width, label=model)
-        plt.xticks([xi + width / 2 for xi in x], metrics_list)
+        plt.xticks([xi + width / 2 for xi in x], metrics_list, rotation=45)
 
-    plt.ylim(0, 1.02)
+    try:
+        vals = m['value'].astype(float).values
+        vmin, vmax = float(vals.min()), float(vals.max())
+        pad = max(0.01, (vmax - vmin) * 0.15)
+        plt.ylim(max(0.0, vmin - pad), min(1.02, vmax + pad))
+    except Exception:
+        plt.ylim(0.94, 1.02)
+    plt.ylabel('Score')
     plt.title('Final Metrics Comparison')
+    plt.legend()
     plt.tight_layout()
     out = os.path.join(FIGDIR, 'metrics_comparison.png')
     plt.savefig(out, dpi=150)
@@ -106,11 +123,9 @@ def plot_metrics_comparison(metrics_csv: str, benchmarks_csv: str = None):
 
 def plot_network_sample(edge_csv: str, top_n: int = 30):
     if nx is None:
-        print('networkx not available — skipping network visualization')
         return None
 
     df = pd.read_csv(edge_csv)
-    # Aggregate by celltype pair
     if 'combined_weight_raw' in df.columns:
         weight_col = 'combined_weight_raw'
     elif 'weight' in df.columns:
@@ -118,7 +133,6 @@ def plot_network_sample(edge_csv: str, top_n: int = 30):
     else:
         weight_col = None
 
-    # create aggregated celltype->target_celltype weights
     agg = df.groupby(['source_cell_type', 'target_cell_type'])[weight_col].sum().reset_index()
     agg_sorted = agg.sort_values(weight_col, ascending=False).head(top_n)
 
@@ -137,12 +151,10 @@ def plot_network_sample(edge_csv: str, top_n: int = 30):
     except Exception:
         pos = nx.kamada_kawai_layout(G)
 
-    # node sizes by degree
     degrees = dict(G.degree(weight='weight'))
     maxdeg = max(degrees.values()) if degrees else 1
     node_sizes = [300 + (degrees[n] / maxdeg) * 1200 for n in G.nodes()]
 
-    # edge widths scaled
     weights = [d['weight'] for _, _, d in G.edges(data=True)]
     if weights:
         maxw = max(weights)
@@ -171,29 +183,19 @@ def main():
 
     outs = []
     if os.path.exists(history_csv):
-        print('Plotting training curves...')
         outs += plot_training_curves(history_csv)
-    else:
-        print('training_history.csv not found — skipping training curves')
 
     if os.path.exists(metrics_csv):
-        print('Plotting metrics comparison...')
         outs.append(plot_metrics_comparison(metrics_csv, benchmarks_csv if os.path.exists(benchmarks_csv) else None))
-    else:
-        print('training_metrics.csv not found — skipping metrics comparison')
 
     if os.path.exists(edge_csv):
-        print('Generating network sample...')
         net_out = plot_network_sample(edge_csv, top_n=30)
         if net_out:
             outs.append(net_out)
-    else:
-        print('edge_list.csv not found — skipping network sample')
 
-    print('\nSaved figures:')
     for o in outs:
         if o:
-            print(' -', o)
+            print(o)
 
 
 if __name__ == '__main__':

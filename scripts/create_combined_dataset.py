@@ -31,69 +31,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def load_datasets():
-    """Load all input datasets."""
-    logger.info("Loading datasets...")
-    
-    # Load single-cell data
     adata = sc.read_h5ad('dataset.h5ad')
-    logger.info(f"✓ Loaded dataset.h5ad: {adata.shape} ({adata.n_obs} cells × {adata.n_vars} genes)")
-    
-    # Load CellPhoneDB data
     interactions = pd.read_csv('cellphonedb_data/interaction_input.csv')
     proteins = pd.read_csv('cellphonedb_data/protein_input.csv')
     genes = pd.read_csv('cellphonedb_data/gene_input.csv')
     complexes = pd.read_csv('cellphonedb_data/complex_input.csv')
-    logger.info(f"✓ Loaded CellPhoneDB: {len(interactions)} interactions, {len(proteins)} proteins")
-    
     return adata, interactions, proteins, genes, complexes
 
 def create_combined_dataset(adata, interactions, proteins, genes, complexes):
-    """Create combined analysis dataset."""
-    logger.info("\n=== Creating Combined Dataset ===")
-    
-    # 1. Ensure gene annotations are complete
-    logger.info("\n1. Processing gene information...")
     gene_mapping = genes.set_index('gene_name')['uniprot'].to_dict()
     
-    # Add gene metadata to adata.var
     adata.var['gene_name'] = adata.var['feature_name']
     adata.var['uniprot'] = adata.var['gene_name'].map(gene_mapping)
     
-    logger.info(f"   - Gene features: {adata.n_vars}")
-    logger.info(f"   - Mapped UniProts: {adata.var['uniprot'].notna().sum()}")
-    
-    # 2. Process cell metadata
-    logger.info("\n2. Processing cell metadata...")
     cell_types = adata.obs['cell_type'].unique()
-    logger.info(f"   - Cell types: {len(cell_types)}")
-    logger.info(f"   - Cells per type:\n{adata.obs['cell_type'].value_counts().head(10)}")
     
-    # 3. Create interaction summary
-    logger.info("\n3. Summarizing ligand-receptor interactions...")
-    
-    # Extract partner information
     interactions_summary = interactions[['partner_a', 'partner_b', 'protein_name_a', 'protein_name_b']].copy()
     interactions_summary['pair_id'] = interactions_summary['partner_a'] + '_' + interactions_summary['partner_b']
     
-    logger.info(f"   - Total interactions: {len(interactions)}")
-    logger.info(f"   - Unique partner pairs: {len(interactions_summary['pair_id'].unique())}")
-    
-    # 4. Add protein properties
-    logger.info("\n4. Summarizing protein properties...")
     protein_summary = proteins[['uniprot', 'protein_name', 'transmembrane', 'receptor', 'secreted']].copy()
     
-    # Identify ligand/receptor types
     ligand_receptors = interactions[['partner_a', 'partner_b']].values.flatten()
     ligand_receptors_unique = set(ligand_receptors[pd.notna(ligand_receptors)])
-    
-    logger.info(f"   - Total proteins: {len(proteins)}")
-    logger.info(f"   - Unique ligand/receptor partners: {len(ligand_receptors_unique)}")
-    logger.info(f"   - Transmembrane proteins: {proteins['transmembrane'].sum()}")
-    logger.info(f"   - Receptor proteins: {proteins['receptor'].sum()}")
-    logger.info(f"   - Secreted proteins: {proteins['secreted'].sum()}")
-    
-    # 5. Create metadata structure
-    logger.info("\n5. Creating analysis metadata...")
     
     uns_metadata = {
         'analysis': {
@@ -126,43 +85,24 @@ def create_combined_dataset(adata, interactions, proteins, genes, complexes):
         }
     }
     
-    # Add to AnnData object
     for key, value in uns_metadata.items():
         adata.uns[key] = value
-    
-    logger.info(f"   - Metadata keys: {list(adata.uns.keys())}")
     
     return adata, interactions_summary, protein_summary, uns_metadata
 
 def save_outputs(adata, interactions_summary, protein_summary, uns_metadata):
-    """Save combined dataset and metadata."""
-    logger.info("\n=== Saving Outputs ===")
-    
-    # Create results directory if needed
     Path('results').mkdir(exist_ok=True)
     
-    # 1. Save combined AnnData object
     output_file = 'results/combined_dataset.h5ad'
     adata.write_h5ad(output_file)
-    size_mb = Path(output_file).stat().st_size / 1024 / 1024
-    logger.info(f"✓ Saved combined_dataset.h5ad ({size_mb:.1f} MB)")
     
-    # 2. Save interaction summary
     interactions_summary.to_csv('results/interaction_summary.csv', index=False)
-    logger.info(f"✓ Saved interaction_summary.csv ({len(interactions_summary)} rows)")
-    
-    # 3. Save protein summary
     protein_summary.to_csv('results/protein_summary.csv', index=False)
-    logger.info(f"✓ Saved protein_summary.csv ({len(protein_summary)} rows)")
     
-    # 4. Save metadata as JSON
     metadata_file = 'results/dataset_metadata.json'
     with open(metadata_file, 'w') as f:
         json.dump(uns_metadata, f, indent=2, default=str)
-    logger.info(f"✓ Saved dataset_metadata.json")
     
-    # 5. Create summary statistics
-    logger.info("\n=== Summary Statistics ===")
     stats = {
         'Metric': [
             'Total Cells',
@@ -194,18 +134,13 @@ def save_outputs(adata, interactions_summary, protein_summary, uns_metadata):
     
     stats_df = pd.DataFrame(stats)
     stats_df.to_csv('results/data_summary_statistics.csv', index=False)
-    logger.info(f"✓ Saved data_summary_statistics.csv")
     
-    print("\n" + "="*60)
-    print("SUMMARY STATISTICS")
-    print("="*60)
+    print("Summary Statistics:")
     print(stats_df.to_string(index=False))
-    print("="*60)
     
     return stats_df
 
 def create_analysis_guide():
-    """Create documentation guide for team."""
     guide = """
 # Combined Dataset - Initial Analysis Guide
 
@@ -430,8 +365,6 @@ def main():
         logger.info("  3. results/protein_summary.csv - Protein properties")
         logger.info("  4. results/dataset_metadata.json - Structured metadata")
         logger.info("  5. results/data_summary_statistics.csv - Quick reference")
-        logger.info("  6. INITIAL_ANALYSIS_GUIDE.md - Team documentation")
-        logger.info("\nNext: Share with team and run analyze_all_iterations.py")
         logger.info("="*70 + "\n")
         
     except Exception as e:
