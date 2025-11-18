@@ -14,8 +14,9 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 class GATPredictor(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, use_affinity=False):
         super().__init__()
+        self.use_affinity = use_affinity
         self.mlp = nn.Sequential(
             nn.Linear(input_dim, 64),
             nn.ReLU(),
@@ -29,7 +30,7 @@ class GATPredictor(nn.Module):
         h = self.mlp(x)
         s, t = edge_index
         score = (h[s] * h[t]).sum(1, keepdim=True)
-        if weight is not None:
+        if self.use_affinity and weight is not None:
             score = score * weight.unsqueeze(1)
         return self.sig(score)
 
@@ -41,11 +42,14 @@ def load_data():
     return graph, edge_list
 
 def prepare_data(graph, edge_list):
-    """Prepare training data with positive and negative edges."""
+    """Prepare training data with positive and negative edges and affinity weights."""
     pos_edges = set()
+    edge_weights_dict = {}
     for _, row in edge_list.iterrows():
         key = (row['source_cell_type'], row['ligand'], row['target_cell_type'], row['receptor'])
         pos_edges.add(key)
+        weight = row.get('weight', 1.0) if 'weight' in row else 1.0
+        edge_weights_dict[key] = weight
     
     s_idx, t_idx = graph.edge_index.numpy()
     n_pos = len(s_idx)
@@ -62,12 +66,18 @@ def prepare_data(graph, edge_list):
     all_s = np.concatenate([s_idx, neg_s])
     all_t = np.concatenate([t_idx, neg_t])
     all_labels = np.concatenate([np.ones(n_pos), np.zeros(n_neg)], dtype=np.float32)
+    
     all_weights = np.ones(len(all_s), dtype=np.float32)
+    for i in range(len(all_s)):
+        if i < n_pos:
+            key_tuple = tuple(edge_list.iloc[i][['source_cell_type', 'ligand', 'target_cell_type', 'receptor']])
+            all_weights[i] = edge_weights_dict.get(key_tuple, 1.0)
     
     perm = np.random.permutation(len(all_labels))
     all_s = all_s[perm]
     all_t = all_t[perm]
     all_labels = all_labels[perm]
+    all_weights = all_weights[perm]
     
     n_tr = int(0.7 * len(perm))
     n_va = int(0.15 * len(perm))
@@ -92,6 +102,7 @@ def train(model, data, name, use_w):
     x = data['graph'].x.to(dev)
     ei = data['edge_index'].to(dev)
     labels_all = data['labels'].to(dev)
+    weights_all = data['weights'].to(dev)
     
     for ep in range(1, 16):
         model.train()
@@ -100,7 +111,8 @@ def train(model, data, name, use_w):
             idx = data['train'][i:i+256]
             ei_batch = ei[:, idx]
             l_batch = labels_all[idx]
-            p = model(x, ei_batch, None)
+            w_batch = weights_all[idx] if use_w else None
+            p = model(x, ei_batch, w_batch)
             loss = loss_fn(p.squeeze(), l_batch)
             opt.zero_grad()
             loss.backward()
@@ -112,7 +124,8 @@ def train(model, data, name, use_w):
             test_idx = data['test']
             ei_test = ei[:, test_idx]
             l_test = labels_all[test_idx]
-            p = model(x, ei_test, None).squeeze().cpu().numpy()
+            w_test = weights_all[test_idx] if use_w else None
+            p = model(x, ei_test, w_test).squeeze().cpu().numpy()
             l = l_test.cpu().numpy()
             
             if len(np.unique(l)) > 1:  # Both classes present
@@ -139,8 +152,8 @@ if __name__ == '__main__':
     data = prepare_data(graph, edge_list)
 
     h_all = []
-    h_all.extend(train(GATPredictor(graph.x.shape[1]), data, 'baseline', False))
-    h_all.extend(train(GATPredictor(graph.x.shape[1]), data, 'affinity_weighted', True))
+    h_all.extend(train(GATPredictor(graph.x.shape[1], use_affinity=False), data, 'baseline', False))
+    h_all.extend(train(GATPredictor(graph.x.shape[1], use_affinity=True), data, 'affinity_weighted', True))
 
     df = pd.DataFrame(h_all)
     df.to_csv('results/training_history.csv', index=False)
