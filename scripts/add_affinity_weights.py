@@ -12,7 +12,7 @@ Weight definitions:
  - weight_pK = 9 - log10(KD_nM)  (approximate pKd when KD in nM)
  Both weights are normalized to 0-1 across the dataset (min-max) and stored as *_norm.
 
-Run with venv python: ./cpdb/bin/python3 scripts/add_affinity_weights.py
+Run with venv python: ./venv/bin/python3 scripts/add_affinity_weights.py
 """
 import os
 import math

@@ -265,7 +265,7 @@ Cell-to-Cell-Communication/
 ├── DATASETS & DATA
 │   ├── dataset.h5ad                    # TNBC scRNA-seq (42.5K cells, 28.2K genes)
 │   ├── cellphonedb_data/               # CellPhoneDB interaction database reference
-│   └── cpdb/                           # Virtual environment (optional cleanup)
+│   └── venv/                           # Virtual environment (optional cleanup)
 │
 ├── TRAINED MODELS
 │   └── results/models/

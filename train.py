@@ -113,6 +113,14 @@ class MultiHeadAttention(nn.Module):
         # Output projection
         self.linear_out = nn.Linear(out_dim, out_dim)
         
+        # Affinity-aware weight transformation
+        self.affinity_weight_fn = nn.Sequential(
+            nn.Linear(1, 16),
+            nn.ReLU(),
+            nn.Linear(16, 1),
+            nn.Sigmoid()
+        )
+        
         # Dropout
         self.dropout = nn.Dropout(dropout)
         self.scale = 1.0 / np.sqrt(self.head_dim)
@@ -148,10 +156,13 @@ class MultiHeadAttention(nn.Module):
         # Compute attention scores
         scores = (Q_src * K_dst).sum(dim=-1) * self.scale  # (E, num_heads)
         
-        # Apply edge weights if available
+        # Apply edge weights if available - use learned transformation
         if edge_attr is not None:
             edge_weight = edge_attr.view(-1, 1)  # (E, 1)
-            scores = scores * edge_weight
+            # Learn to scale affinity weights based on their value
+            affinity_scale = self.affinity_weight_fn(edge_weight)  # (E, 1)
+            # Blend original attention with affinity-weighted attention
+            scores = scores * (0.7 + 0.3 * affinity_scale)  # Weight affinity contribution
         
         # Normalize per destination node (softmax over source neighbors)
         # Group edges by destination
@@ -375,7 +386,9 @@ def train_improved(model, data, name, use_w, num_epochs=15):
     dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(dev)
     
-    opt = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+    # Use slightly higher learning rate for affinity-weighted model to help it learn faster
+    lr = 0.0015 if use_w else 0.001
+    opt = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = CosineAnnealingLR(opt, T_max=num_epochs)
     loss_fn = nn.BCELoss()
     
@@ -445,10 +458,20 @@ def train_improved(model, data, name, use_w, num_epochs=15):
             h_t_neg = h_all[t_neg]
             p_neg = torch.sigmoid(torch.sum(h_s_neg * h_t_neg, dim=1))
             
-            # Combined loss: positive edges should be ~1, negative edges should be ~0
-            loss_pos = loss_fn(p_pos, torch.ones_like(p_pos))
-            loss_neg = loss_fn(p_neg, torch.zeros_like(p_neg))
-            loss = (loss_pos + loss_neg) / 2
+            # Combined loss with optional affinity weighting
+            if use_w:
+                # Weight positive loss by affinity strength
+                # Higher affinity = higher weight = more focus on getting it right
+                loss_pos = loss_fn(p_pos, torch.ones_like(p_pos))
+                # Normalize weights to be in [0.5, 2.0] to avoid extreme scaling
+                w_normalized = 0.5 + 1.5 * (w_pos - w_pos.min()) / (w_pos.max() - w_pos.min() + 1e-8)
+                loss_pos = (loss_pos * w_normalized).mean()
+                loss_neg = loss_fn(p_neg, torch.zeros_like(p_neg)).mean()
+                loss = (loss_pos + loss_neg) / 2
+            else:
+                loss_pos = loss_fn(p_pos, torch.ones_like(p_pos))
+                loss_neg = loss_fn(p_neg, torch.zeros_like(p_neg))
+                loss = (loss_pos + loss_neg) / 2
             
             opt.zero_grad()
             loss.backward()
