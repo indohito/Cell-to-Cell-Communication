@@ -1,0 +1,21 @@
+{
+  "num_nodes": 959,
+  "num_edges": 1734794,
+  "num_cell_types": 29,
+  "num_genes": 930,
+  "num_node_features": 34,
+  "edge_weight_min": 0.019607843831181526,
+  "edge_weight_max": 1.0,
+  "edge_weight_mean": 0.951146125793457,
+  "edge_weight_std": 0.20622806251049042,
+  "cell_types": [
+    "B.cells.Memory",
+    "B.cells.Naive",
+    "CAFs.MSC.iCAF.like",
+    "CAFs.myCAF.like",
+    "Cancer.Basal.SC",
+    "..."
+  ],
+  "num_interactions": 867397,
+  "affinity_weighted": true
+}
