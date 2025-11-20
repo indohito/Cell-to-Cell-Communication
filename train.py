@@ -196,43 +196,54 @@ class MultiHeadAttention(nn.Module):
         return F.relu(out)
 
 
-def load_data():
-    """Load pre-computed graph and edge list."""
-    from torch_geometric.data import Data
-    try:
-        torch.serialization.add_safe_globals([Data])
-    except AttributeError:
-        # Older PyTorch versions don't have add_safe_globals
-        pass
+# Import shared utilities (non-breaking: functions maintain same interface)
+try:
+    from training.utils import load_graph_and_edges as _load_graph_and_edges, normalize_weights as _normalize_weights
+    def load_data():
+        """Load pre-computed graph and edge list."""
+        return _load_graph_and_edges('results/graph.pt', 'results/edge_list.csv')
     
-    # Load graph with compatibility for older PyTorch versions
-    try:
-        graph = torch.load('results/graph.pt', weights_only=False)
-    except TypeError:
-        # Fallback for older PyTorch versions that don't support weights_only
-        graph = torch.load('results/graph.pt')
+    def normalize_weights(weights):
+        """Normalize edge weights to [0.5, 1.5] range to avoid extreme scaling."""
+        return _normalize_weights(weights)
+except ImportError:
+    # Fallback to original implementation if utils not available
+    def load_data():
+        """Load pre-computed graph and edge list."""
+        from torch_geometric.data import Data
+        try:
+            torch.serialization.add_safe_globals([Data])
+        except AttributeError:
+            # Older PyTorch versions don't have add_safe_globals
+            pass
+        
+        # Load graph with compatibility for older PyTorch versions
+        try:
+            graph = torch.load('results/graph.pt', weights_only=False)
+        except TypeError:
+            # Fallback for older PyTorch versions that don't support weights_only
+            graph = torch.load('results/graph.pt')
+        
+        edge_list = pd.read_csv('results/edge_list.csv')
+        return graph, edge_list
     
-    edge_list = pd.read_csv('results/edge_list.csv')
-    return graph, edge_list
-
-
-def normalize_weights(weights):
-    """Normalize edge weights to [0.5, 1.5] range to avoid extreme scaling."""
-    if len(weights) == 0:
-        return weights
-    
-    weights = np.asarray(weights, dtype=np.float32)
-    
-    # Handle edge cases
-    if np.max(weights) == np.min(weights):
-        return np.ones_like(weights, dtype=np.float32)
-    
-    # Min-max normalization to [0.5, 1.5]
-    w_min, w_max = np.min(weights), np.max(weights)
-    normalized = (weights - w_min) / (w_max - w_min)
-    normalized = 0.5 + normalized  # Scale to [0.5, 1.5]
-    
-    return normalized.astype(np.float32)
+    def normalize_weights(weights):
+        """Normalize edge weights to [0.5, 1.5] range to avoid extreme scaling."""
+        if len(weights) == 0:
+            return weights
+        
+        weights = np.asarray(weights, dtype=np.float32)
+        
+        # Handle edge cases
+        if np.max(weights) == np.min(weights):
+            return np.ones_like(weights, dtype=np.float32)
+        
+        # Min-max normalization to [0.5, 1.5]
+        w_min, w_max = np.min(weights), np.max(weights)
+        normalized = (weights - w_min) / (w_max - w_min)
+        normalized = 0.5 + normalized  # Scale to [0.5, 1.5]
+        
+        return normalized.astype(np.float32)
 
 
 def prepare_data_improved(graph, edge_list):
