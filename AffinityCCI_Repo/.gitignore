@@ -1,0 +1,12 @@
+# Data
+*.h5ad
+*.pt
+*.tsv
+*.txt
+cellphonedb_data/
+
+# System
+__pycache__/
+logs/
+.DS_Store
+.ipynb_checkpoints/
