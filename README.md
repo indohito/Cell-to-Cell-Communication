@@ -143,6 +143,7 @@ python src/biological_validation.py
 
 ## Contributors
 
+* **Team Name:** Overfit and Chill
 * **Project Team:** Akash Shetty, Troy Zhou, Jinho Lee, Oviyan Anabarasu, Kangyu Sun
-* **Course:** BIOINF 593 (Machine Learning in Computational Biology)
+* **Course:** BIOINF 593 (Machine Learning in Bioinformatics)
 * **Data Sources:** Open Problems (TNBC), CellPhoneDB, BindingDB, IntAct
